@@ -6,12 +6,20 @@ from typing import Optional
 import boto3
 from botocore.exceptions import ClientError
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("wallet-service")
 
 app = FastAPI(title="Wallet Service", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 WALLETS_TABLE = os.getenv("WALLETS_TABLE", "payment-platform-wallets")

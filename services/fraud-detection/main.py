@@ -8,11 +8,19 @@ from collections import defaultdict, deque
 
 import boto3
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("fraud-detection-service")
 
 app = FastAPI(title="Fraud Detection Service", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 TRANSACTIONS_TABLE = os.getenv("TRANSACTIONS_TABLE", "payment-platform-transactions")

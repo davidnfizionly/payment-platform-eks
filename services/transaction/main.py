@@ -9,12 +9,20 @@ import boto3
 import httpx
 from botocore.exceptions import ClientError
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("transaction-service")
 
 app = FastAPI(title="Transaction Service", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 TRANSACTIONS_TABLE = os.getenv("TRANSACTIONS_TABLE", "payment-platform-transactions")
