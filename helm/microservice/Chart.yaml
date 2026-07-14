@@ -1,0 +1,6 @@
+apiVersion: v2
+name: microservice
+description: Chart générique réutilisable pour chacun des 5 microservices de la plateforme
+type: application
+version: 1.0.0
+appVersion: "1.0.0"

@@ -1,0 +1,12 @@
+image:
+  repository: "116143764563.dkr.ecr.us-east-1.amazonaws.com/payment-platform-notification"
+  tag: "latest"
+
+serviceAccount:
+  irsaRoleArn: "arn:aws:iam::116143764563:role/payment-platform-notification-irsa"
+
+env:
+  - name: AWS_REGION
+    value: "us-east-1"
+  - name: NOTIFICATION_QUEUE_URL
+    value: "https://sqs.us-east-1.amazonaws.com/116143764563/payment-platform-notification-queue"
