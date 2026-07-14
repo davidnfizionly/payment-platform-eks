@@ -1,0 +1,16 @@
+image:
+  repository: "116143764563.dkr.ecr.us-east-1.amazonaws.com/payment-platform-transaction"
+  tag: "latest"
+
+serviceAccount:
+  irsaRoleArn: "arn:aws:iam::116143764563:role/payment-platform-transaction-irsa"
+
+env:
+  - name: AWS_REGION
+    value: "us-east-1"
+  - name: TRANSACTIONS_TABLE
+    value: "payment-platform-transactions"
+  - name: EVENT_BUS_NAME
+    value: "payment-platform-events"
+  - name: WALLET_SERVICE_URL
+    value: "http://wallet-service:8000"
