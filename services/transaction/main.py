@@ -31,6 +31,7 @@ class TransferRequest(BaseModel):
     from_wallet: str
     to_wallet: str
     amount: Decimal = Field(gt=0)
+    location: str = "unknown"
 
 
 class TransferResponse(BaseModel):
@@ -98,6 +99,7 @@ def create_transfer(request: TransferRequest):
             "from_wallet": request.from_wallet,
             "to_wallet": request.to_wallet,
             "amount": request.amount,
+            "location": request.location,
             "status": "PENDING",
             "created_at": int(time.time()),
         }
