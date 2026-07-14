@@ -1,0 +1,33 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+crash.log
+
+# AWS
+.aws/
+
+# Node / Frontend
+node_modules/
+dist/
+build/
+.env
+.env.local
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# OS / Editor
+.DS_Store
+.vscode/
+*.log
+
+# Kubernetes secrets (au cas où)
+*secret*.yaml
+!*secret*.example.yaml
