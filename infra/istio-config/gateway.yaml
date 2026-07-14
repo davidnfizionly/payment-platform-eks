@@ -49,7 +49,7 @@ spec:
         - uri:
             prefix: /api/fraud
       rewrite:
-        uri: /
+        uri: /fraud-events
       route:
         - destination:
             host: fraud-detection-service

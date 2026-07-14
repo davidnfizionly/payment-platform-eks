@@ -198,3 +198,12 @@ def _mark_failed(transaction_id: str, reason: str):
         ExpressionAttributeNames={"#s": "status"},
         ExpressionAttributeValues={":status": "FAILED", ":reason": reason},
     )
+
+
+@app.get("/transfers")
+def list_transfers(limit: int = 50):
+    """Liste les transferts les plus récents — utilisé par le dashboard pour le flux en direct."""
+    response = transactions_table.scan(Limit=limit)
+    items = response.get("Items", [])
+    items.sort(key=lambda x: x.get("created_at", 0), reverse=True)
+    return {"transfers": items[:limit]}
