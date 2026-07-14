@@ -191,3 +191,12 @@ def stats():
         "wallets_tracked": len(wallet_history),
         "records_processed": len(_processed_records),
     }
+
+
+@app.get("/fraud-events")
+def list_fraud_events(limit: int = 50):
+    """Liste les alertes de fraude les plus récentes — utilisé par le dashboard."""
+    response = fraud_events_table.scan(Limit=limit)
+    items = response.get("Items", [])
+    items.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
+    return {"fraud_events": items[:limit]}

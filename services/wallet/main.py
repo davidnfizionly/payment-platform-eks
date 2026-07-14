@@ -136,3 +136,10 @@ def credit_wallet(wallet_id: str, request: AdjustBalanceRequest):
         owner_name=item["owner_name"],
         balance=item["balance"],
     )
+
+
+@app.get("/wallets")
+def list_wallets():
+    """Liste tous les wallets — utile pour un aperçu des soldes dans le dashboard."""
+    response = wallets_table.scan()
+    return {"wallets": response.get("Items", [])}
