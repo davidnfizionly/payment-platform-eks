@@ -135,9 +135,6 @@ The Fraud Detection service picks it up off the DynamoDB Stream within seconds a
 
 ![Fraud Scenario Dashboard](docs/videos/fraud-scenario-dashboard.gif)
 
-**Live operations dashboard**, polling the real API:
-
-![Dashboard](docs/screenshots/dashboard-live.png)
 
 **The cluster, running:**
 
