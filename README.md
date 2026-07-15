@@ -133,7 +133,7 @@ python3 simulate.py scenario velocity
 
 The Fraud Detection service picks it up off the DynamoDB Stream within seconds and raises three separate velocity alerts as the threshold is crossed, visible live on the dashboard:
 
-![Fraud Scenario Dashboard](docs/videos/fraud-scenario-dashboard.mp4)
+![Fraud Scenario Dashboard](docs/videos/fraud-scenario-dashboard.gif)
 
 **Live operations dashboard**, polling the real API:
 
