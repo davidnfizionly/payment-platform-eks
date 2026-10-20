@@ -4,9 +4,23 @@
 
 ---
 
-![Architecture Diagram](docs/architecture-diagram.gif)
+![Architecture Diagram](diagram/architecture.png)
 
-**Flow:** A traffic simulator (or the live dashboard) sends requests through an Istio Ingress Gateway on an AWS Network Load Balancer. Requests are routed to one of five microservices running inside the mesh. The Transaction service orchestrates a Saga across Wallet debits and credits, all backed by DynamoDB. A DynamoDB Stream on the Transactions table feeds the Fraud Detection service in near real time. Confirmed transactions and fraud alerts are published to EventBridge, which fans out to SQS queues consumed by the Notification and Reconciliation services.
+**Flow:**
+
+1. The traffic simulator on the workstation sends HTTP (Hypertext Transfer Protocol) requests to the Classic Load Balancer that Kubernetes created for the Istio ingress gateway Service, in the public subnets of a VPC (Virtual Private Cloud) spread over two AZs (Availability Zones) in us-east-1.
+2. The Istio ingress gateway, in the `istio-system` namespace of the Amazon EKS (Elastic Kubernetes Service) cluster, applies the `Gateway` and `VirtualService` from `infra/istio-config/gateway.yaml`: `/api/transfers` goes to Transaction, `/api/wallets` to Wallet and `/api/fraud` to Fraud Detection. Every pod in the `payment-app` namespace runs an Envoy sidecar, and istiod issues the certificates for mTLS (mutual Transport Layer Security) between them.
+3. Transaction looks up the idempotency key through a GSI (global secondary index) on the Transactions table and returns the stored result on a replay; otherwise it writes the transaction as `PENDING`.
+4. Transaction calls Wallet to debit the sender, then credit the receiver; Wallet applies each change to the Wallets table with a conditional update, so a balance never goes negative. If the credit fails, Transaction credits the sender back and marks the transaction `COMPENSATED`, or `COMPENSATION_FAILED` if the compensation fails too.
+5. Transaction marks the transaction `CONFIRMED` and publishes a `TransactionConfirmed` event to the custom EventBridge bus.
+6. The Transactions table has a DynamoDB Stream (new and old images). Fraud Detection runs as a pod, not a Lambda function, so a background thread polls the stream through the DynamoDB Streams API (application programming interface) every 2 seconds.
+7. Fraud Detection applies three rules per wallet (velocity, amount spike, impossible travel), writes each alert to the FraudEvents table and publishes a `FraudAlertRaised` event to EventBridge.
+8. Three EventBridge rules deliver to two SQS (Simple Queue Service) queues: `TransactionConfirmed` and `FraudAlertRaised` go to the notification queue, and every `payment.transaction` event goes to the reconciliation queue.
+9. Notification and Reconciliation poll their queue. Notification logs a simulated notification; Reconciliation counts lifecycle events and scans the Wallets table every 30 seconds to check that the total balance has not changed.
+10. Each service runs under its own Kubernetes service account annotated with an IAM (Identity and Access Management) role. Through IRSA (IAM Roles for Service Accounts), the pod exchanges its service account token for that role's credentials, using the cluster's OIDC (OpenID Connect) provider and AWS (Amazon Web Services) STS (Security Token Service). Each role allows only the tables, bus and queue that service uses.
+11. Images built locally with Docker are pushed to five Amazon ECR (Elastic Container Registry) repositories (scan on push, last five images kept). The two t3.medium nodes in the private subnets pull them, and all outbound traffic from the nodes, including calls to the AWS APIs, goes through a single NAT (network address translation) gateway.
+12. Prometheus scrapes the sidecar metrics; Grafana and Kiali read them from Prometheus. All three come from Istio's addon manifests and run in `istio-system`.
+13. The React dashboard, run locally with Vite, reads transfers, wallets and fraud alerts through the same load balancer.
 
 ---
 
@@ -41,7 +55,7 @@ A 5-microservice payment platform, deployed on a production-pattern Amazon EKS c
 - **Event-driven decoupling** via EventBridge and SQS, so a slow notification never blocks a transfer
 - **Rule-based fraud detection** evaluated within seconds of a transaction being written, via DynamoDB Streams
 
-It was built end to end in a single day: infrastructure, five backend services, a live dashboard, a traffic simulator, and full documentation, then torn down to avoid unnecessary cost.
+Everything was torn down afterwards to avoid unnecessary cost.
 
 ## Tech Stack
 
@@ -66,7 +80,7 @@ It was built end to end in a single day: infrastructure, five backend services, 
 
 **2. Terraform backend.** An S3 bucket (versioned, encrypted, public access blocked) and a DynamoDB lock table, bootstrapped with local state before every other module switched to using this backend remotely.
 
-**3. VPC and EKS.** A 2-AZ VPC with a single NAT Gateway (a deliberate time and cost tradeoff, not an oversight), and an EKS cluster with a managed node group of two t3.medium nodes, IRSA enabled from the start.
+**3. VPC and EKS.** A 2-AZ VPC with a single NAT Gateway (a deliberate cost tradeoff, not an oversight), and an EKS cluster with a managed node group of two t3.medium nodes, IRSA enabled from the start.
 
 **4. Istio.** Installed with the demo profile: control plane, ingress gateway, egress gateway.
 
@@ -219,7 +233,7 @@ python3 simulate.py background
 
 **EKS over Lambda for the compute layer.** The explicit goal was to demonstrate Kubernetes and service mesh orchestration. Lambda would have been technically viable for parts of this system but would have diluted that signal.
 
-**Single NAT Gateway, two AZs instead of three.** An explicit time and cost tradeoff for a one-day build, documented here rather than hidden.
+**Single NAT Gateway, two AZs instead of three.** An explicit cost tradeoff, documented here rather than hidden.
 
 **Rule-based fraud detection instead of machine learning.** Transparency mattered more than sophistication for a first version. Every alert traces back to a named, understandable rule, which is itself a legitimate production pattern before investing in a model.
 

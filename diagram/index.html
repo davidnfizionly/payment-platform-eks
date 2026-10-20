@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Payment Platform - Architecture</title>
+<style>
+  :root { --ink: #232F3E; --region: #00A4A6; --grey: #7D8998; --vpc: #8C4FFF; --public: #7AA116; --private: #00A4A6; --containers: #ED7100; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; font-family: "Amazon Ember", "Helvetica Neue", Arial, sans-serif; color: var(--ink); }
+  #canvas { position: relative; width: 1800px; height: 1000px; background: #fff; overflow: hidden; }
+  .box { position: absolute; border: 2px solid; }
+  .box > .title { position: absolute; top: 6px; left: 10px; font-size: 19px; display: flex; align-items: center; gap: 8px; }
+  .box > .title img { width: 32px; height: 32px; }
+  .cloud { border-color: var(--ink); }
+  .cloud > .title { top: 0; left: 0; background: var(--ink); color: #fff; padding: 0 12px 0 0; height: 36px; }
+  .cloud > .title img { width: 36px; height: 36px; }
+  .region { border: 2px dashed var(--region); }
+  .region > .title { color: #00777A; }
+  .local { border-color: var(--grey); }
+  .vpc { border-color: var(--vpc); }
+  .vpc > .title { color: #6B2FD9; }
+  .vpc > .title img, .public > .title img, .private > .title img { margin: -6px 0 0 -10px; }
+  .public { border-color: var(--public); }
+  .public > .title { color: #3F6E0B; }
+  .private { border-color: var(--private); }
+  .private > .title { color: #00777A; }
+  .cluster { border-color: var(--containers); }
+  .cluster > .title { color: #B35400; }
+  .namespace { border: 2px dashed var(--containers); }
+  .namespace > .title { color: #B35400; }
+  .node { position: absolute; width: 180px; margin-left: -90px; text-align: center; }
+  .node.narrow { width: 130px; margin-left: -65px; }
+  .node.wide { width: 200px; margin-left: -100px; }
+  .node img { width: 64px; height: 64px; display: block; margin: 0 auto; }
+  .node span { display: block; margin-top: 6px; font-size: 20px; line-height: 1.15; }
+  .step { position: absolute; width: 30px; height: 30px; border-radius: 50%; background: #000; color: #fff; font-size: 17px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  svg { position: absolute; inset: 0; pointer-events: none; }
+  svg polyline { fill: none; stroke: #000; stroke-width: 1.6; }
+</style>
+</head>
+<body>
+<div id="canvas">
+
+  <!-- Containers -->
+  <div class="box local" style="left:30px; top:130px; width:210px; height:770px;"><div class="title">Workstation</div></div>
+  <div class="box cloud" style="left:265px; top:15px; width:1510px; height:970px;"><div class="title"><img src="icons/group-aws-cloud.svg" alt="">AWS Cloud</div></div>
+  <div class="box region" style="left:290px; top:75px; width:1460px; height:885px;"><div class="title"><img src="icons/group-region.svg" alt="">us-east-1</div></div>
+  <div class="box vpc" style="left:315px; top:125px; width:1015px; height:805px;"><div class="title"><img src="icons/group-vpc.svg" alt="">VPC 10.0.0.0/16 (2 AZs)</div></div>
+  <div class="box public" style="left:335px; top:170px; width:200px; height:740px;"><div class="title"><img src="icons/group-public-subnet.svg" alt="">Public subnets</div></div>
+  <div class="box private" style="left:555px; top:170px; width:755px; height:740px;"><div class="title"><img src="icons/group-private-subnet.svg" alt="">Private subnets</div></div>
+  <div class="box cluster" style="left:575px; top:215px; width:715px; height:675px;"><div class="title"><img src="icons/eks.svg" alt="">EKS cluster, 2 x t3.medium nodes</div></div>
+  <div class="box namespace" style="left:595px; top:258px; width:675px; height:174px;"><div class="title">istio-system namespace</div></div>
+  <div class="box namespace" style="left:595px; top:472px; width:675px; height:398px;"><div class="title">payment-app namespace</div></div>
+
+  <!-- Nodes: top = center y - 32 -->
+  <div class="node" style="left:135px; top:188px;"><img src="icons/toolkit.svg" alt=""><span>Docker build</span></div>
+  <div class="node" style="left:135px; top:306px;"><img src="icons/gear.svg" alt=""><span>Traffic simulator</span></div>
+  <div class="node" style="left:135px; top:488px;"><img src="icons/client.svg" alt=""><span>Dashboard</span></div>
+
+  <div class="node" style="left:435px; top:306px;"><img src="icons/clb.svg" alt=""><span>Classic Load Balancer</span></div>
+  <div class="node" style="left:435px; top:738px;"><img src="icons/nat-gateway.svg" alt=""><span>NAT gateway</span></div>
+
+  <div class="node narrow" style="left:665px; top:306px;"><img src="icons/internet-alt1.svg" alt=""><span>Istio ingress gateway</span></div>
+  <div class="node narrow" style="left:800px; top:306px;"><img src="icons/ssl-padlock.svg" alt=""><span>istiod</span></div>
+  <div class="node narrow" style="left:935px; top:306px;"><img src="icons/magnifying-glass.svg" alt=""><span>Kiali</span></div>
+  <div class="node narrow" style="left:1065px; top:306px;"><img src="icons/metrics.svg" alt=""><span>Grafana</span></div>
+  <div class="node narrow" style="left:1195px; top:306px;"><img src="icons/database.svg" alt=""><span>Prometheus</span></div>
+
+  <div class="node" style="left:870px; top:518px;"><img src="icons/container.svg" alt=""><span>Wallet</span></div>
+  <div class="node" style="left:1030px; top:518px;"><img src="icons/container.svg" alt=""><span>Transaction</span></div>
+  <div class="node" style="left:1190px; top:518px;"><img src="icons/container.svg" alt=""><span>Fraud Detection</span></div>
+  <div class="node" style="left:760px; top:738px;"><img src="icons/container.svg" alt=""><span>Reconciliation</span></div>
+  <div class="node" style="left:1190px; top:738px;"><img src="icons/container.svg" alt=""><span>Notification</span></div>
+
+  <div class="node" style="left:1440px; top:193px;"><img src="icons/ecr.svg" alt=""><span>ECR, 5 repos</span></div>
+  <div class="node wide" style="left:1650px; top:378px;"><img src="icons/iam-role.svg" alt=""><span>IAM roles (IRSA)</span></div>
+  <div class="node wide" style="left:1440px; top:378px;"><img src="icons/dynamodb-stream.svg" alt=""><span>DynamoDB Stream</span></div>
+  <div class="node wide" style="left:1440px; top:518px;"><img src="icons/dynamodb.svg" alt=""><span>DynamoDB tables</span></div>
+  <div class="node" style="left:1440px; top:738px;"><img src="icons/sqs.svg" alt=""><span>SQS, 2 queues</span></div>
+  <div class="node wide" style="left:1650px; top:738px;"><img src="icons/eventbridge.svg" alt=""><span>EventBridge bus</span></div>
+
+  <!-- Steps -->
+  <div class="step" style="left:67px; top:293px;">1</div>
+  <div class="step" style="left:703px; top:293px;">2</div>
+  <div class="step" style="left:962px; top:505px;">3</div>
+  <div class="step" style="left:802px; top:505px;">4</div>
+  <div class="step" style="left:1582px; top:725px;">5</div>
+  <div class="step" style="left:1372px; top:365px;">6</div>
+  <div class="step" style="left:1122px; top:505px;">7</div>
+  <div class="step" style="left:1372px; top:725px;">8</div>
+  <div class="step" style="left:692px; top:725px;">9</div>
+  <div class="step" style="left:1582px; top:365px;">10</div>
+  <div class="step" style="left:1372px; top:180px;">11</div>
+  <div class="step" style="left:1233px; top:293px;">12</div>
+  <div class="step" style="left:67px; top:475px;">13</div>
+
+  <svg width="1800" height="1000" viewBox="0 0 1800 1000">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#000"/>
+      </marker>
+    </defs>
+    <!-- 1 simulator traffic to the load balancer, then to the Istio ingress gateway -->
+    <polyline points="171,338 399,338" marker-end="url(#arrow)"/>
+    <polyline points="471,338 629,338" marker-end="url(#arrow)"/>
+    <!-- 2 Gateway and VirtualService routes to Wallet, Transaction and Fraud Detection -->
+    <polyline points="665,425 665,452 870,452 870,514" marker-end="url(#arrow)"/>
+    <polyline points="870,452 1030,452 1030,514" marker-end="url(#arrow)"/>
+    <polyline points="1030,452 1190,452 1190,514" marker-end="url(#arrow)"/>
+    <!-- 3 Transaction and 4 Wallet read and write DynamoDB; Reconciliation scans Wallets (9) -->
+    <polyline points="994,575 950,575 950,690" />
+    <polyline points="760,738 760,690 870,690" />
+    <polyline points="870,615 870,690 1342,690 1342,565" />
+    <!-- 4 Transaction calls Wallet for the debit, credit and compensation -->
+    <polyline points="994,550 906,550" marker-end="url(#arrow)"/>
+    <!-- 5 Transaction and 7 Fraud Detection publish to EventBridge -->
+    <polyline points="1030,615 1030,635 1650,635 1650,729" marker-end="url(#arrow)"/>
+    <polyline points="1190,615 1190,635" />
+    <!-- 7 Fraud Detection writes FraudEvents -->
+    <polyline points="1226,565 1404,565" marker-end="url(#arrow)"/>
+    <!-- 6 Transactions table stream polled by Fraud Detection -->
+    <polyline points="1440,514 1440,472" marker-end="url(#arrow)"/>
+    <polyline points="1404,410 1250,410 1250,535 1226,535" marker-end="url(#arrow)"/>
+    <!-- 8 EventBridge rules to the SQS queues -->
+    <polyline points="1614,770 1476,770" marker-end="url(#arrow)"/>
+    <!-- 9 Notification and Reconciliation poll their queues -->
+    <polyline points="1404,770 1226,770" marker-end="url(#arrow)"/>
+    <polyline points="1440,830 1440,850 760,850 760,834" marker-end="url(#arrow)"/>
+    <!-- 10 service accounts assume their IAM roles through the cluster OIDC provider -->
+    <polyline points="1650,374 1650,310 1290,310" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <!-- 11 images pushed to ECR and pulled by the nodes; outbound traffic through the NAT gateway -->
+    <polyline points="171,220 210,220 210,65 1440,65 1440,189" marker-end="url(#arrow)"/>
+    <polyline points="1404,225 1290,225" marker-end="url(#arrow)"/>
+    <polyline points="575,770 471,770" marker-end="url(#arrow)"/>
+    <!-- 12 Grafana and Kiali read Prometheus -->
+    <polyline points="1163,338 1101,338" marker-end="url(#arrow)"/>
+    <polyline points="1195,302 1195,288 935,288 935,302" marker-end="url(#arrow)"/>
+    <!-- 13 dashboard calls the API through the load balancer -->
+    <polyline points="171,520 435,520 435,426" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  </svg>
+</div>
+</body>
+</html>
