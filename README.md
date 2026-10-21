@@ -1,6 +1,6 @@
 # Payment Platform on EKS
 
-### A resilient, event-driven mobile payment system built on Amazon EKS with Istio, demonstrating exactly-once transaction processing under real network failure conditions
+### Five FastAPI microservices on EKS with an Istio mesh, demonstrating idempotent retries. A saga with compensation is implemented, but its failure path was not tested.
 
 ---
 
@@ -31,7 +31,8 @@
 - [Tech Stack](#tech-stack)
 - [The Build, in Order](#the-build-in-order)
 - [Real Problems Hit and Fixed](#real-problems-hit-and-fixed)
-- [Proof It Works](#proof-it-works)
+- [What Was Demonstrated](#what-was-demonstrated)
+- [Limits](#limits)
 - [Cost Discipline](#cost-discipline)
 - [Running This Yourself](#running-this-yourself)
 - [Architecture Decisions](#architecture-decisions)
@@ -43,7 +44,7 @@
 
 Mobile money platforms like M-Pesa process millions of transactions a day under one non-negotiable constraint: a transfer must never be lost, and it must never be duplicated, even when the network drops mid-request, a pod crashes, or a client retries the same call three times because it never got a response.
 
-This is one of the hardest problems in distributed systems engineering. Most portfolio projects sidestep it by building a generic CRUD app on top of Kubernetes and calling it "cloud native." This project does the opposite: it picks that one specific, well-understood failure mode and proves, on camera, that it is solved correctly, rather than asserting it in a bullet point.
+This is one of the hardest problems in distributed systems engineering. Most portfolio projects sidestep it by building a generic CRUD app on top of Kubernetes and calling it "cloud native." This project does the opposite: it picks one specific, well-understood failure mode, the retried request, and demonstrates how it is handled, rather than asserting it in a bullet point.
 
 ## What This Actually Is
 
@@ -51,7 +52,7 @@ A 5-microservice payment platform, deployed on a production-pattern Amazon EKS c
 
 - The **Saga pattern** for distributed transactions (debit, then credit, then confirm, with automatic compensation if any step fails)
 - **Idempotency keys** so a retried request returns the original result instead of double-processing money
-- **Circuit breaking and mTLS** handled by the mesh, not application code
+- **mTLS between services** handled by the mesh, not application code (Istio default mode, see Limits)
 - **Event-driven decoupling** via EventBridge and SQS, so a slow notification never blocks a transfer
 - **Rule-based fraud detection** evaluated within seconds of a transaction being written, via DynamoDB Streams
 
@@ -123,7 +124,7 @@ This section exists because a project that only shows the happy path teaches not
 
 **CORS was missing entirely** on the three services called directly from the browser, since none of them originally needed to handle browser requests. Added `CORSMiddleware` to Wallet, Transaction, and Fraud Detection, rebuilt, and redeployed.
 
-## Proof It Works
+## What Was Demonstrated
 
 **Idempotency under retry.** The same request, with the same idempotency key, sent twice:
 
@@ -168,12 +169,23 @@ The Fraud Detection service picks it up off the DynamoDB Stream within seconds a
 
 ![Docker Images](docs/screenshots/docker-images-ecr.png)
 
+## Limits
+
+- No Kubernetes network policies: any pod can reach any other pod in the cluster.
+- No authentication on the public API: anyone with the load balancer address can call it.
+- HTTP only, on a Classic Load Balancer: no TLS between the client and the cluster.
+- mTLS mode: no `PeerAuthentication` resource is defined in this repository, so Istio runs in its default `PERMISSIVE` mode. Sidecars use mTLS between each other, but plaintext traffic is still accepted (`STRICT` is not enforced).
+- The fraud detection window is held in memory, so it is lost when the Fraud Detection pod restarts.
+- No failure was injected: the saga compensation path (`COMPENSATED`, `COMPENSATION_FAILED`) was not tested.
+- The idempotency key is looked up through a GSI, and GSI reads are eventually consistent: two simultaneous requests with the same key can both be processed.
+- No automated tests.
+- A single run of each scenario.
+
 ## Cost Discipline
 
 This entire build, from an empty AWS account to a fully working EKS cluster with a live mesh, five microservices, and complete observability, ran against the AWS Free Tier credit for a single account.
 
-**Starting balance:** $120.00
-**Balance after the full build, running for the day:** $119.00
+The actual cost of the build will be confirmed with AWS Cost Explorer.
 
 The cluster and every associated resource were destroyed the same day (see Cleanup) specifically to keep it that way.
 
@@ -229,7 +241,7 @@ python3 simulate.py background
 
 ## Architecture Decisions
 
-**Saga over two-phase commit.** Two-phase commit requires a coordinator and blocks on failure. A Saga trades strict consistency for availability, which is what real payment systems use at scale, and is what this project set out to demonstrate.
+**Saga over two-phase commit.** Two-phase commit requires a coordinator and blocks on failure. A Saga trades strict consistency for availability, which is what real payment systems use at scale. Here the saga is implemented, but its failure path was not tested (see Limits).
 
 **EKS over Lambda for the compute layer.** The explicit goal was to demonstrate Kubernetes and service mesh orchestration. Lambda would have been technically viable for parts of this system but would have diluted that signal.
 
@@ -249,4 +261,6 @@ cd ../cluster && terraform destroy
 cd ../backend && terraform destroy
 ```
 
-Verified against AWS Cost Explorer before and after to confirm no orphaned billable resources remained.
+The Cost Explorer check for orphaned billable resources will be added here after it has been done.
+
+The destruction was not verified with a listing of the remaining resources, and no proof file of it is in this repository.
